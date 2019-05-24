@@ -1,0 +1,7 @@
+.vscode/ipch
+bin/*
+lib/*
+CMakeFiles
+cmake_install.cmake
+CMakeCache.txt
+Makefile
