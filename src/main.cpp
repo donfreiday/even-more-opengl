@@ -89,6 +89,23 @@ int main(int argc, char **argv) {
     std::cout<< "Failed to compile fragment shader: " << infoLog << std::endl;
   }
 
+  unsigned int fragmentShader2 = glCreateShader(GL_FRAGMENT_SHADER);
+  const char* fragmentShader2Source = 
+  "#version 330 core\n"
+  "out vec4 FragColor;\n"
+  "void main()\n"
+  "{\n"
+  "  FragColor = vec4(1.0f, 0.0f, 0.0f, 1.0f);\n"
+  "}\n";
+  glShaderSource(fragmentShader2, 1, &fragmentShader2Source, nullptr);
+  glCompileShader(fragmentShader2);
+  glGetShaderiv(fragmentShader2, GL_COMPILE_STATUS, &success);
+  if (!success) {
+    char infoLog[512];
+    glGetShaderInfoLog(fragmentShader2, 512, nullptr, infoLog);
+    std::cout<< "Failed to compile fragment shader 2: " << infoLog << std::endl;
+  }
+
   // Link vertex and fragment shaders into shader program object
   unsigned int shaderProgram = glCreateProgram();
   glAttachShader(shaderProgram, vertexShader);
@@ -100,13 +117,58 @@ int main(int argc, char **argv) {
     glGetProgramInfoLog(shaderProgram, 512, nullptr, infoLog);
     std::cout<< "Failed to link shader program: " << infoLog << std::endl;
   }
+  
+  unsigned int shaderProgram2 = glCreateProgram();
+  glAttachShader(shaderProgram2, vertexShader);
+  glAttachShader(shaderProgram2, fragmentShader2);
+  glLinkProgram(shaderProgram2);
+  glGetProgramiv(shaderProgram2, GL_LINK_STATUS, &success);
+  if (!success) {
+    char infoLog[512];
+    glGetProgramInfoLog(shaderProgram2, 512, nullptr, infoLog);
+    std::cout<< "Failed to link shader program 2: " << infoLog << std::endl;
+  }
+
   glDeleteShader(vertexShader);
   glDeleteShader(fragmentShader);
+  glDeleteShader(fragmentShader2);
+
+  unsigned int vao[2];
+  glGenVertexArrays(2, vao);
+  glBindVertexArray(vao[0]);
+
+  float vertices0[] = {
+    -0.8f, -0.4f, 0.0f, // Left triangle, bottom left
+     0.0f, -0.4f, 0.0f, // Left triangle, bottom right
+    -0.4f,  0.4f, 0.0f, // Left triangle, top
+  };
+  float vertices1[] = {
+     0.0f, -0.4f, 0.0f, // Right triangle, bottom left
+     0.8f, -0.4f, 0.0f, // Right triangle, bottom right
+     0.4f,  0.4f, 0.0f  // Right triangle, top
+  };
+  unsigned int vbo[2];
+  glGenBuffers(2, vbo);
+  glBindBuffer(GL_ARRAY_BUFFER, vbo[0]);
+  glBufferData(GL_ARRAY_BUFFER, sizeof(vertices0), vertices0, GL_STATIC_DRAW);
+
+  glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3*sizeof(float), (void*)0);
+  glEnableVertexAttribArray(0); // Enable vertex attribute zero (position)
+
+  glBindVertexArray(0);
+  glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+  glBindVertexArray(vao[1]);
+  glBindBuffer(GL_ARRAY_BUFFER, vbo[1]);
+  glBufferData(GL_ARRAY_BUFFER, sizeof(vertices1), vertices1, GL_STATIC_DRAW);
+
+  glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3*sizeof(float), (void*)0);
+  glEnableVertexAttribArray(0); // Enable vertex attribute zero (position)
 
   /////////////////////////////////////////////////////////////////////////////
   // Set up vertex buffers and attributes
   /////////////////////////////////////////////////////////////////////////////
-  float vertices[] = {
+  /*float vertices[] = {
      0.5f,  0.5f,  0.0f, // top right
      0.5f, -0.5f,  0.0f, // bottom right
     -0.5f, -0.5f,  0.0f, // bottom left
@@ -152,28 +214,33 @@ int main(int argc, char **argv) {
   // glBindBuffer(GL_ARRAY_BUFFER, 0);
 
   // Unbind VAO
-  glBindVertexArray(0);
+  glBindVertexArray(0);*/
 
   while (!glfwWindowShouldClose(window)) {
       glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
       glClear(GL_COLOR_BUFFER_BIT);
       
       glUseProgram(shaderProgram);
-      glBindVertexArray(vao);
-      glDrawElements(
-        GL_TRIANGLES,   // Drawing mode
-        6,              // Number of elements to draw; we have 6 indices
-        GL_UNSIGNED_INT,// Type of the indices
-        0               // Offset in EBO (or pass in index array if not using EBO)
-        );
+      glBindVertexArray(vao[0]);
+      glDrawArrays(GL_TRIANGLES, 0, 3);
+
+      glUseProgram(shaderProgram2);
+      glBindVertexArray(vao[1]);
+      glDrawArrays(GL_TRIANGLES, 0, 3);
+      // glDrawElements(
+      //   GL_TRIANGLES,   // Drawing mode
+      //   6,              // Number of elements to draw; we have 6 indices
+      //   GL_UNSIGNED_INT,// Type of the indices
+      //   0               // Offset in EBO (or pass in index array if not using EBO)
+      //   );
       
       glfwSwapBuffers(window);
       glfwPollEvents();
   }
 
-  glDeleteVertexArrays(1, &vao);
-  glDeleteBuffers(1, &vbo);
-  glDeleteBuffers(1, &ebo);
+  glDeleteVertexArrays(2, vao);
+  glDeleteBuffers(2, vbo);
+  //glDeleteBuffers(1, &ebo);
   glfwTerminate();
   return 0;
 }
